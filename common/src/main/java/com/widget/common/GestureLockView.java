@@ -5,7 +5,9 @@ import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
@@ -20,6 +22,7 @@ import java.util.List;
  */
 public class GestureLockView extends View {
     private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);//抗锯齿
+    private Path mPath = new Path();
     private int mSelectedMinSize = 3;
     private boolean createPointsFinish = false;
     private List<Point> mPointList = new ArrayList();
@@ -31,13 +34,16 @@ public class GestureLockView extends View {
     private float moveX;
     private float moveY;
     private boolean startDraw = false;
-    private boolean endDraw = false;
+    private boolean endDraw = true;
     private Point mCurrPoint;
     private Point mPrePoint;
     private Point mTmpPoint;
     private Bitmap mTmpBitmap;
     private long mUpTime = 666;//毫秒
     private int mResetTag = 0;
+    private boolean touchEnable = true;
+    private int mStrokeWidth = 0;
+    private int mLineColor = 0;
     private GestureListener mGestureListener;
     private Handler stateResetHandler = new Handler() {
         @Override
@@ -45,6 +51,7 @@ public class GestureLockView extends View {
             if (msg.what != mResetTag) return;
             setNormalStatePointList();
             invalidate();
+            touchEnable = true;
         }
     };
 
@@ -70,6 +77,9 @@ public class GestureLockView extends View {
                 attrsTypedArray.recycle();
             }
         }
+        mPaint.setStyle(Paint.Style.STROKE);
+        mPaint.setStrokeWidth(mStrokeWidth == 0 ? 10 : mStrokeWidth);
+        mPaint.setColor(mLineColor == 0 ? Color.parseColor("#0094ff") : mStrokeWidth);
     }
 
     @Override
@@ -80,10 +90,16 @@ public class GestureLockView extends View {
             createPointsFinish = true;
         }
         drawPoints(canvas);//画点
+        drawLine(canvas);//画线
+    }
+
+    private void drawLine(Canvas canvas) {
+        canvas.drawPath(mPath, mPaint);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (!touchEnable) return false;
         moveX = event.getX();
         moveY = event.getY();
 
@@ -91,23 +107,29 @@ public class GestureLockView extends View {
             case MotionEvent.ACTION_MOVE:
                 mTmpPoint = checkTouchGesturePoint();
                 if (mTmpPoint != null && !mSelectedPointList.contains(mTmpPoint)) {
-                    mPrePoint = mCurrPoint;
-                    mCurrPoint = mTmpPoint;//记录为当前
-                    setPressedPointState(mCurrPoint);
+                    if (startDraw) {
+                        mPrePoint = mCurrPoint;
+                        mCurrPoint = mTmpPoint;//记录为当前
+                        setPressedPointState(mCurrPoint);
+                    } else
+                        addFirstPoint();
+                    mPath.moveTo(mCurrPoint.getX(), mCurrPoint.getY());
+                } else {
+                    mPath.reset();
+                    mPath.lineTo(moveX, moveY);
                 }
                 break;
             case MotionEvent.ACTION_DOWN:
+                endDraw = false;
                 mTmpPoint = checkTouchGesturePoint();
-                if (mTmpPoint != null) {
-                    mCurrPoint = mTmpPoint;//记录为当前
-                    endDraw = false;
-                    startDraw = true;
-                    setPressedPointState(mCurrPoint);
-                }
+                if (mTmpPoint != null)
+                    addFirstPoint();
                 break;
             case MotionEvent.ACTION_UP:
+                if (!startDraw && endDraw) break;//手势开始记录后允许重置状态
                 endDraw = true;
                 startDraw = false;
+                touchEnable = false;
                 break;
         }
 
@@ -124,11 +146,28 @@ public class GestureLockView extends View {
     }
 
     /**
+     * 设置线的粗细
+     *
+     * @param w
+     */
+    public void setLineWidth(int w) {
+        mStrokeWidth = w;
+    }
+
+    /**
+     * 设置线的颜色
+     *
+     * @param color
+     */
+    public void setLineColor(int color) {
+        mLineColor = color;
+    }
+
+    /**
      * 设置手势监听
      *
      * @param listener
      */
-
     public void setGestureListener(GestureListener listener) {
         mGestureListener = listener;
     }
@@ -206,10 +245,20 @@ public class GestureLockView extends View {
     }
 
     /**
-     *
+     * 重置点的状态
      */
     public void resetNormalState() {
         stateResetHandler.sendEmptyMessageDelayed(mResetTag, mUpTime);
+    }
+
+    /**
+     * 添加第一个点
+     */
+    private void addFirstPoint() {
+        mPath.moveTo(moveX, moveY);
+        mCurrPoint = mTmpPoint;//记录为当前
+        startDraw = true;
+        setPressedPointState(mCurrPoint);
     }
 
     /**
@@ -356,6 +405,7 @@ public class GestureLockView extends View {
     @Override
     protected void onDetachedFromWindow() {
         mGestureListener = null;
+        mPath = null;
         mPaint = null;
         mPointList = null;
         mSelectedPointList = null;
