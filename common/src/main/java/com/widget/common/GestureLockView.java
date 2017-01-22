@@ -21,6 +21,7 @@ import java.util.List;
  * Created by zzq on 2017/1/19.
  */
 public class GestureLockView extends View {
+    private boolean mLinePathState_Normal = true;
     private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);//抗锯齿
     private Path mPath = new Path();
     private List<Path> mPathList = new ArrayList();
@@ -53,12 +54,11 @@ public class GestureLockView extends View {
             if (msg.what != mResetTag) return;
             setNormalStatePointList();
             clearLinePath();
-            mPaint.setColor(mLineColor == 0 ? Color.parseColor("#0094ff") : mStrokeWidth);
+            mLinePathState_Normal = true;
             invalidate();
             touchEnable = true;
         }
     };
-
 
     public GestureLockView(Context context) {
         this(context, null);
@@ -84,7 +84,6 @@ public class GestureLockView extends View {
         }
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setStrokeWidth(mStrokeWidth == 0 ? 10 : mStrokeWidth);
-        mPaint.setColor(mLineColor == 0 ? Color.parseColor("#0094ff") : mStrokeWidth);
     }
 
     @Override
@@ -99,6 +98,10 @@ public class GestureLockView extends View {
     }
 
     private void drawLine(Canvas canvas) {
+        if (mLinePathState_Normal)
+            mPaint.setColor(mLineColor == 0 ? Color.parseColor("#0094ff") : mStrokeWidth);
+        else
+            mPaint.setColor(mErrorLineColor == 0 ? Color.RED : mErrorLineColor);
         for (Path p : mPathList)
             canvas.drawPath(p, mPaint);
     }
@@ -314,7 +317,7 @@ public class GestureLockView extends View {
     private void setErrorStateSelectedPointList() {
         for (Point p : mSelectedPointList)
             p.state = Point.STATE_ERROR;
-        mPaint.setColor(mErrorLineColor == 0 ? Color.RED : mErrorLineColor);
+        mLinePathState_Normal = false;
         invalidate();
         resetNormalState();
     }
