@@ -23,6 +23,7 @@ import java.util.List;
 public class GestureLockView extends View {
     private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);//抗锯齿
     private Path mPath = new Path();
+    private List<Path> mPathList = new ArrayList();
     private int mSelectedMinSize = 3;
     private boolean createPointsFinish = false;
     private List<Point> mPointList = new ArrayList();
@@ -50,6 +51,7 @@ public class GestureLockView extends View {
         public void handleMessage(Message msg) {
             if (msg.what != mResetTag) return;
             setNormalStatePointList();
+            clearLinePath();
             invalidate();
             touchEnable = true;
         }
@@ -95,6 +97,8 @@ public class GestureLockView extends View {
 
     private void drawLine(Canvas canvas) {
         canvas.drawPath(mPath, mPaint);
+        for (Path p : mPathList)
+            canvas.drawPath(p, mPaint);
     }
 
     @Override
@@ -110,12 +114,13 @@ public class GestureLockView extends View {
                     if (startDraw) {
                         mPrePoint = mCurrPoint;
                         mCurrPoint = mTmpPoint;//记录为当前
+                        saveLinePath();
                         setPressedPointState(mCurrPoint);
                     } else
                         addFirstPoint();
-                    mPath.moveTo(mCurrPoint.getX(), mCurrPoint.getY());
-                } else {
+                } else if (mCurrPoint != null) {
                     mPath.reset();
+                    mPath.moveTo(mCurrPoint.getX(), mCurrPoint.getY());
                     mPath.lineTo(moveX, moveY);
                 }
                 break;
@@ -252,10 +257,29 @@ public class GestureLockView extends View {
     }
 
     /**
+     * 保存某一段线的轨迹
+     */
+    private void saveLinePath() {
+        mPath.reset();
+        mPath.moveTo(mPrePoint.getX(), mPrePoint.getY());
+        mPath.lineTo(mCurrPoint.getX(), mCurrPoint.getY());
+        mPathList.add(mPath);//将当前一段轨迹保存
+        mPath = new Path();
+    }
+
+    /**
+     * 清空所有线的轨迹
+     */
+    private void clearLinePath() {
+        for (Path p : mPathList)
+            p.reset();
+        mPathList.clear();
+    }
+
+    /**
      * 添加第一个点
      */
     private void addFirstPoint() {
-        mPath.moveTo(moveX, moveY);
         mCurrPoint = mTmpPoint;//记录为当前
         startDraw = true;
         setPressedPointState(mCurrPoint);
@@ -275,9 +299,8 @@ public class GestureLockView extends View {
      * 设置错误状态
      */
     private void setErrorStateSelectedPointList() {
-        for (Point p : mSelectedPointList) {
+        for (Point p : mSelectedPointList)
             p.state = Point.STATE_ERROR;
-        }
         resetNormalState();
     }
 
@@ -405,6 +428,7 @@ public class GestureLockView extends View {
     @Override
     protected void onDetachedFromWindow() {
         mGestureListener = null;
+        mPathList = null;
         mPath = null;
         mPaint = null;
         mPointList = null;
