@@ -45,6 +45,7 @@ public class GestureLockView extends View {
     private boolean touchEnable = true;
     private int mStrokeWidth = 0;
     private int mLineColor = 0;
+    private int mErrorLineColor = 0;
     private GestureListener mGestureListener;
     private Handler stateResetHandler = new Handler() {
         @Override
@@ -52,10 +53,12 @@ public class GestureLockView extends View {
             if (msg.what != mResetTag) return;
             setNormalStatePointList();
             clearLinePath();
+            mPaint.setColor(mLineColor == 0 ? Color.parseColor("#0094ff") : mStrokeWidth);
             invalidate();
             touchEnable = true;
         }
     };
+
 
     public GestureLockView(Context context) {
         this(context, null);
@@ -96,7 +99,6 @@ public class GestureLockView extends View {
     }
 
     private void drawLine(Canvas canvas) {
-        canvas.drawPath(mPath, mPaint);
         for (Path p : mPathList)
             canvas.drawPath(p, mPaint);
     }
@@ -119,6 +121,7 @@ public class GestureLockView extends View {
                     } else
                         addFirstPoint();
                 } else if (mCurrPoint != null) {
+                    mPathList.add(mPath);
                     mPath.reset();
                     mPath.moveTo(mCurrPoint.getX(), mCurrPoint.getY());
                     mPath.lineTo(moveX, moveY);
@@ -132,6 +135,7 @@ public class GestureLockView extends View {
                 break;
             case MotionEvent.ACTION_UP:
                 if (!startDraw && endDraw) break;//手势开始记录后允许重置状态
+                mPath.reset();
                 endDraw = true;
                 startDraw = false;
                 touchEnable = false;
@@ -160,12 +164,21 @@ public class GestureLockView extends View {
     }
 
     /**
-     * 设置线的颜色
+     * 设置常态线的颜色
      *
      * @param color
      */
     public void setLineColor(int color) {
         mLineColor = color;
+    }
+
+    /**
+     * 设置错误时线的颜色
+     *
+     * @param color
+     */
+    public void setErrorLineColor(int color) {
+        mErrorLineColor = color;
     }
 
     /**
@@ -301,6 +314,8 @@ public class GestureLockView extends View {
     private void setErrorStateSelectedPointList() {
         for (Point p : mSelectedPointList)
             p.state = Point.STATE_ERROR;
+        mPaint.setColor(mErrorLineColor == 0 ? Color.RED : mErrorLineColor);
+        invalidate();
         resetNormalState();
     }
 
