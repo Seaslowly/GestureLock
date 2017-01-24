@@ -22,7 +22,7 @@ import java.util.List;
  */
 public class GestureLockView extends View {
     private boolean mLinePathState_Normal = true;
-    private boolean mMovingTouch = false;
+    private boolean mMovingTouch = false;//手指是否在触摸移动
     private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);//抗锯齿
     private Path mPath = new Path();
     private int mSelectedMinSize = 3;
@@ -143,7 +143,7 @@ public class GestureLockView extends View {
                 if (!startDraw && endDraw) break;//手势开始记录后允许重置状态
                 mCurrPoint = null;//没有选中点的连线，up时不绘制
                 endDraw = true;
-                startDraw = false;//重置移动触摸状态
+                startDraw = false;
                 touchEnable = false;
                 if (mMovingTouch)//重置移动触摸状态
                     mMovingTouch = false;
