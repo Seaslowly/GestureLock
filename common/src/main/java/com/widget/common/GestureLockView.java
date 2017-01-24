@@ -150,8 +150,7 @@ public class GestureLockView extends View {
                 break;
         }
 
-        //一次完整的绘制结果处理
-        if (endDraw) {
+        if (endDraw) {//一次完整的绘制结果处理
             //手势过于简单 或 getPointList返回结果处理状态
             if ((mSelectedMinSize > 0 && mSelectedPointList.size() <= mSelectedMinSize) ||
                     (mGestureListener != null && !mGestureListener.getPointList(mSelectedPointList)))
