@@ -304,7 +304,6 @@ public class GestureLockView extends View {
         for (Point p : mSelectedPointList)
             p.state = Point.STATE_ERROR;
         mLinePathState_Normal = false;
-        invalidate();
         resetNormalState();
     }
 
