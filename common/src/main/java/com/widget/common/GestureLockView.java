@@ -22,9 +22,9 @@ import java.util.List;
  */
 public class GestureLockView extends View {
     private boolean mLinePathState_Normal = true;
+    private boolean mMovingTouch = false;
     private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);//抗锯齿
     private Path mPath = new Path();
-    private List<Path> mPathList = new ArrayList();
     private int mSelectedMinSize = 3;
     private boolean createPointsFinish = false;
     private List<Point> mPointList = new ArrayList();
@@ -38,7 +38,6 @@ public class GestureLockView extends View {
     private boolean startDraw = false;
     private boolean endDraw = true;
     private Point mCurrPoint;
-    private Point mPrePoint;
     private Point mTmpPoint;
     private Bitmap mTmpBitmap;
     private long mUpTime = 666;//毫秒
@@ -53,8 +52,8 @@ public class GestureLockView extends View {
         public void handleMessage(Message msg) {
             if (msg.what != mResetTag) return;
             setNormalStatePointList();
-            clearLinePath();
             mLinePathState_Normal = true;
+            mPath.reset();
             invalidate();
             touchEnable = true;
         }
@@ -83,7 +82,9 @@ public class GestureLockView extends View {
             }
         }
         mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeWidth(mStrokeWidth == 0 ? 10 : mStrokeWidth);
+        mPaint.setStrokeWidth(mStrokeWidth == 0 ? 15 : mStrokeWidth);
+        mPaint.setStrokeJoin(Paint.Join.ROUND);//连接处轮廓平滑过渡
+        mPaint.setStrokeCap(Paint.Cap.ROUND);//设置影响笔刷的末端
     }
 
     @Override
@@ -98,12 +99,15 @@ public class GestureLockView extends View {
     }
 
     private void drawLine(Canvas canvas) {
-        if (mLinePathState_Normal)
-            mPaint.setColor(mLineColor == 0 ? Color.parseColor("#0094ff") : mStrokeWidth);
-        else
-            mPaint.setColor(mErrorLineColor == 0 ? Color.RED : mErrorLineColor);
-        for (Path p : mPathList)
-            canvas.drawPath(p, mPaint);
+        if (!mMovingTouch) {
+            if (mLinePathState_Normal)
+                mPaint.setColor(mLineColor == 0 ? Color.parseColor("#0094ff") : mStrokeWidth);
+            else
+                mPaint.setColor(mErrorLineColor == 0 ? Color.RED : mErrorLineColor);
+        }
+        canvas.drawPath(mPath, mPaint);//设定路径
+        if (mCurrPoint != null)
+            canvas.drawLine(mCurrPoint.getX(), mCurrPoint.getY(), moveX, moveY, mPaint);
     }
 
     @Override
@@ -114,23 +118,22 @@ public class GestureLockView extends View {
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_MOVE:
+                if (!mMovingTouch)
+                    mMovingTouch = true;
                 mTmpPoint = checkTouchGesturePoint();
                 if (mTmpPoint != null && !mSelectedPointList.contains(mTmpPoint)) {
                     if (startDraw) {
-                        mPrePoint = mCurrPoint;
                         mCurrPoint = mTmpPoint;//记录为当前
-                        saveLinePath();
                         setPressedPointState(mCurrPoint);
                     } else
                         addFirstPoint();
-                } else if (mCurrPoint != null) {
-                    mPathList.add(mPath);
-                    mPath.reset();
-                    mPath.moveTo(mCurrPoint.getX(), mCurrPoint.getY());
-                    mPath.lineTo(moveX, moveY);
+                    if (mSelectedPointList.size() > 1)//连接上一个点
+                        mPath.lineTo(mCurrPoint.getX(), mCurrPoint.getY());
                 }
                 break;
             case MotionEvent.ACTION_DOWN:
+                if (mMovingTouch)//重置移动触摸状态
+                    mMovingTouch = false;
                 endDraw = false;
                 mTmpPoint = checkTouchGesturePoint();
                 if (mTmpPoint != null)
@@ -138,10 +141,12 @@ public class GestureLockView extends View {
                 break;
             case MotionEvent.ACTION_UP:
                 if (!startDraw && endDraw) break;//手势开始记录后允许重置状态
-                mPath.reset();
+                mCurrPoint = null;//没有选中点的连线，up时不绘制
                 endDraw = true;
-                startDraw = false;
+                startDraw = false;//重置移动触摸状态
                 touchEnable = false;
+                if (mMovingTouch)//重置移动触摸状态
+                    mMovingTouch = false;
                 break;
         }
 
@@ -273,32 +278,13 @@ public class GestureLockView extends View {
     }
 
     /**
-     * 保存某一段线的轨迹
-     */
-    private void saveLinePath() {
-        mPath.reset();
-        mPath.moveTo(mPrePoint.getX(), mPrePoint.getY());
-        mPath.lineTo(mCurrPoint.getX(), mCurrPoint.getY());
-        mPathList.add(mPath);//将当前一段轨迹保存
-        mPath = new Path();
-    }
-
-    /**
-     * 清空所有线的轨迹
-     */
-    private void clearLinePath() {
-        for (Path p : mPathList)
-            p.reset();
-        mPathList.clear();
-    }
-
-    /**
      * 添加第一个点
      */
     private void addFirstPoint() {
         mCurrPoint = mTmpPoint;//记录为当前
         startDraw = true;
         setPressedPointState(mCurrPoint);
+        mPath.moveTo(mCurrPoint.getX(), mCurrPoint.getY());//第一次选择点的时候设置路径起点
     }
 
     /**
@@ -446,7 +432,6 @@ public class GestureLockView extends View {
     @Override
     protected void onDetachedFromWindow() {
         mGestureListener = null;
-        mPathList = null;
         mPath = null;
         mPaint = null;
         mPointList = null;
@@ -455,7 +440,6 @@ public class GestureLockView extends View {
         mPointErrorBitmap = null;
         mPointNormalBitmap = null;
         mCurrPoint = null;
-        mPrePoint = null;
         mTmpPoint = null;
         mTmpBitmap = null;
         stateResetHandler = null;
