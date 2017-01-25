@@ -17,8 +17,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         final GestureLockView glv = (GestureLockView) findViewById(R.id.g);
-        glv.setResetHaltTime(2000);
+        glv.setResetHaltTime(800);
         glv.setSelectedMinSize(4);
+        glv.setLineVisible(true);
         glv.setGestureListener(new GestureListener() {
             @Override
             public boolean getPointList(List<Point> list) {

@@ -24,7 +24,7 @@ public class GestureLockView extends View {
     private boolean mLinePathState_Normal = true;
     private boolean mMovingTouch = false;//手指是否在触摸移动
     private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);//抗锯齿
-    private Path mPath = new Path();
+    private Path mPath;
     private int mSelectedMinSize = 3;
     private boolean createPointsFinish = false;
     private List<Point> mPointList = new ArrayList();
@@ -46,6 +46,7 @@ public class GestureLockView extends View {
     private int mStrokeWidth = 0;
     private int mLineColor = 0;
     private int mErrorLineColor = 0;
+    private boolean mLineVisible = true;
     private GestureListener mGestureListener;
     private Handler stateResetHandler = new Handler() {
         @Override
@@ -53,7 +54,8 @@ public class GestureLockView extends View {
             if (msg.what != mResetTag) return;
             setNormalStatePointList();
             mLinePathState_Normal = true;
-            mPath.reset();
+            if (mPath != null)
+                mPath.reset();
             invalidate();
             touchEnable = true;
         }
@@ -92,10 +94,20 @@ public class GestureLockView extends View {
         if (!createPointsFinish) {//初始化点坐标
             loadRes();
             createPoints();
+            lineVisible();
             createPointsFinish = true;
         }
         drawPoints(canvas);//画点
-        drawLine(canvas);//画线
+        if (mPath != null)
+            drawLine(canvas);//画线
+    }
+
+    /**
+     * 获得连线路径实例
+     */
+    private void lineVisible() {
+        if (mLineVisible && mPath == null)
+            mPath = new Path();
     }
 
     private void drawLine(Canvas canvas) {
@@ -127,7 +139,7 @@ public class GestureLockView extends View {
                         setPressedPointState(mCurrPoint);
                     } else
                         addFirstPoint();
-                    if (mSelectedPointList.size() > 1)//连接上一个点
+                    if (mPath != null && mSelectedPointList.size() > 1)//连接上一个点
                         mPath.lineTo(mCurrPoint.getX(), mCurrPoint.getY());
                 }
                 break;
@@ -159,6 +171,15 @@ public class GestureLockView extends View {
         }
         invalidate();//UI线程可以直接使用
         return true;
+    }
+
+    /**
+     * 设置连线路径是否可见
+     *
+     * @param show
+     */
+    public void setLineVisible(boolean show) {
+        mLineVisible = show;
     }
 
     /**
@@ -283,7 +304,8 @@ public class GestureLockView extends View {
         mCurrPoint = mTmpPoint;//记录为当前
         startDraw = true;
         setPressedPointState(mCurrPoint);
-        mPath.moveTo(mCurrPoint.getX(), mCurrPoint.getY());//第一次选择点的时候设置路径起点
+        if (mPath != null)
+            mPath.moveTo(mCurrPoint.getX(), mCurrPoint.getY());//第一次选择点的时候设置路径起点
     }
 
     /**
@@ -363,30 +385,31 @@ public class GestureLockView extends View {
      * 初始化创建点
      */
     private void createPoints() {
-        int w = getWidth();
-        int h = getHeight();
+        int w = getWidth(), h = getHeight();
+        float offsetX = 0, offsetY = 0, space = 0;
 
-        float space, offsetX = 0, offsetY = 0;
-        if (w <= h) {//竖屏
-            offsetX = space = w / 4;
-            offsetY = (h - w) / 2 + space;
+        if (w <= h) {
+            offsetX = 0;
+            offsetY = (h - w) / 2;
+            space = (w - 6 * mRPoint) / 4;
         } else {
-            offsetY = space = h / 4;
-            offsetX = (w - h) / 2 + space;
+            offsetX = (w - h) / 2;
+            offsetY = 0;
+            space = (h - 6 * mRPoint) / 4;
         }
 
         //创建点坐标
-        mPointList.add(new Point(offsetX, offsetY));//[0][0]
-        mPointList.add(new Point(offsetX + space, offsetY));//[0][1]
-        mPointList.add(new Point(offsetX + space * 2, offsetY));//[0][2]
+        mPointList.add(new Point(offsetX + space + mRPoint, offsetY + space + mRPoint));//[0][0]
+        mPointList.add(new Point(offsetX + space * 2 + mRPoint * 3, offsetY + space + mRPoint));//[0][1]
+        mPointList.add(new Point(offsetX + space * 3 + mRPoint * 5, offsetY + space + mRPoint));//[0][2]
 
-        mPointList.add(new Point(offsetX, offsetY + space));//[1][0]
-        mPointList.add(new Point(offsetX + space, offsetY + space));//[1][1]
-        mPointList.add(new Point(offsetX + space * 2, offsetY + space));//[1][2]
+        mPointList.add(new Point(offsetX + space + mRPoint, offsetY + space * 2 + mRPoint * 3));//[1][0]
+        mPointList.add(new Point(offsetX + space * 2 + mRPoint * 3, offsetY + space * 2 + mRPoint * 3));//[1][1]
+        mPointList.add(new Point(offsetX + space * 3 + mRPoint * 5, offsetY + space * 2 + mRPoint * 3));//[1][2]
 
-        mPointList.add(new Point(offsetX, offsetY + space * 2));//[2][0]
-        mPointList.add(new Point(offsetX + space, offsetY + space * 2));//[2][1]
-        mPointList.add(new Point(offsetX + space * 2, offsetY + space * 2));//[2][2]
+        mPointList.add(new Point(offsetX + space + mRPoint, offsetY + space * 3 + mRPoint * 5));//[2][0]
+        mPointList.add(new Point(offsetX + space * 2 + mRPoint * 3, offsetY + space * 3 + mRPoint * 5));//[2][1]
+        mPointList.add(new Point(offsetX + space * 3 + mRPoint * 5, offsetY + space * 3 + mRPoint * 5));//[2][2]
     }
 
     /**
