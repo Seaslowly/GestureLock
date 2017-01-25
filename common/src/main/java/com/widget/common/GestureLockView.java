@@ -106,7 +106,7 @@ public class GestureLockView extends View {
                 mPaint.setColor(mErrorLineColor == 0 ? Color.RED : mErrorLineColor);
         }
         canvas.drawPath(mPath, mPaint);//设定路径
-        if (mCurrPoint != null)
+        if (mCurrPoint != null && !selectedRange(mCurrPoint.getX(), mCurrPoint.getY(), moveX, moveY, mRPoint))//坐标超过半径后执行画线操作
             canvas.drawLine(mCurrPoint.getX(), mCurrPoint.getY(), moveX, moveY, mPaint);
     }
 
